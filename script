@@ -1,0 +1,1068 @@
+local function notifsound()
+                local sound = Instance.new("Sound")
+                sound.SoundId = "rbxassetid://131390520971848" -- Your sound ID
+                sound.Volume = 1 -- 0 to 1
+                sound.Parent = workspace -- Where the sound lives
+                sound:Play()
+                task.wait(2)
+                sound:Destroy()
+            end
+
+local _version = "1.6.66"
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+
+WindUI:SetNotificationLower(true)
+local Window = WindUI:CreateWindow({
+    Title = "Goonware",
+    Icon = "house",
+    Theme = "Rose",
+    Folder = "MyHub",
+})
+
+local General = Window:Tab({
+    Title = "General",
+    Icon = "star",
+})
+
+local ESP = Window:Tab({
+    Title = "ESP",
+    Icon = "eye",
+})
+
+local Exploits = Window:Tab({
+    Title = "Exploits",
+    Icon = "eye",
+})
+-- Sections --
+
+local WalkSpeedSection = General:Section({
+    Title = "Walkspeed"
+})
+
+local PPSection = General:Section({
+    Title = "Proximity Prompts"
+})
+
+local FOVSection = General:Section({
+    Title = "FOV"
+})
+
+local BypassesSection = Exploits:Section({
+    Title = "Bypasses"
+})
+
+-- Main --
+
+WalkSpeedSection:Slider({
+  Flag = "WalkSpeedSlider",
+  Title = "Walkspeed",
+  IsTextbox = true,
+  Width = 200,
+  Step = 1,
+  Value = {
+    Min = 0,
+    Max = 50,
+    Default = 16,
+  },
+  Callback = function(value)
+    getgenv().WSslider = value
+  end,
+})
+
+local WalkspeedLoop
+WalkSpeedSection:Toggle({
+  Flag = "WalkSpeedToggle",
+  Title = "Enable Walkspeed",
+  Callback = function(value)
+    if value then
+        local chr = game.Players.LocalPlayer.Character
+        local RunService = game:GetService("RunService")
+        WalkspeedLoop = RunService.RenderStepped:Connect(function(deltaTime)
+            chr.Humanoid.WalkSpeed = getgenv().WSslider
+            game:GetService("ReplicatedStorage").RemotesFolder.Crouch:FireServer(true, true)
+        end)
+    else
+        local chr = game.Players.LocalPlayer.Character
+        if WalkspeedLoop then
+            WalkspeedLoop:Disconnect()
+            WalkspeedLoop = nil
+        end
+    end
+  end,
+})
+
+local PhysicsLoop
+WalkSpeedSection:Toggle({
+  Flag = "NoAccelerationToggle",
+  Title = "No Acceleration",
+  Callback = function(value)
+    if value then
+        local chr = game.Players.LocalPlayer.Character
+        local RunService = game:GetService("RunService")
+        PhysicsLoop = RunService.RenderStepped:Connect(function(deltaTime)
+            chr.HumanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(10, 0.7, 0)
+        end)
+    else
+        local chr = game.Players.LocalPlayer.Character
+        if PhysicsLoop then
+            PhysicsLoop:Disconnect()
+            PhysicsLoop = nil
+        end
+        chr.HumanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(0.518, 0.7, 0)
+    end
+  end,
+})
+
+local PPReachSliderValue = 5
+PPSection:Slider({
+  Flag = "PPReachSlider",
+  Title = "Proximity Prompt Reach",
+  Step = 1,
+  Value = {
+    Min = 1,
+    Max = 10,
+    Default = 5,
+  },
+  Callback = function(value)
+    local oldValue = PPReachSliderValue
+    PPReachSliderValue = value
+    getgenv().PPReachSlider = value
+    
+    if getgenv().PPReachEnabled then
+      local difference = value - oldValue
+      for _, prompt in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+          prompt.MaxActivationDistance = prompt.MaxActivationDistance + difference
+        end
+      end
+    end
+  end,
+})
+
+local PromptDescendantChecker
+PPSection:Toggle({
+  Flag = "PPReachToggle",
+  Title = "Enable Reach",
+  Value = false,
+  Callback = function(value)
+      getgenv().PPReachEnabled = value
+      if value then
+          local function reach(prompt)
+              prompt.MaxActivationDistance = prompt.MaxActivationDistance + getgenv().PPReachSlider
+          end
+          for _, prompt in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if prompt:IsA("ProximityPrompt") then
+                  reach(prompt)
+              end
+          end
+          PromptDescendantChecker = game.Workspace.CurrentRooms.DescendantAdded:Connect(function(prompt)
+              if prompt:IsA("ProximityPrompt") then
+                  reach(prompt)
+              end
+          end)
+      else
+          if PromptDescendantChecker then
+              PromptDescendantChecker:Disconnect()
+              PromptDescendantChecker = nil
+          end
+          for _, prompt in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if prompt:IsA("ProximityPrompt") then
+                  prompt.MaxActivationDistance = prompt.MaxActivationDistance - getgenv().PPReachSlider
+              end
+          end
+      end
+  end,
+})
+
+local PromptDescendantChecker1
+PPSection:Toggle({
+  Flag = "InstantPromptToggle",
+  Title = "Instant Prompt",
+  Value = false,
+  Callback = function(value)
+      if value then
+          for _, prompt in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if prompt:IsA("ProximityPrompt") then
+                  prompt:SetAttribute("OriginalHoldDuration", prompt.HoldDuration)
+                  prompt.HoldDuration = 0
+              end
+          end
+          PromptDescendantChecker1 = game.Workspace.CurrentRooms.DescendantAdded:Connect(function(prompt)
+              if prompt:IsA("ProximityPrompt") then
+                  prompt:SetAttribute("OriginalHoldDuration", prompt.HoldDuration)
+                  prompt.HoldDuration = 0
+              end
+          end)
+      else
+          if PromptDescendantChecker1 then
+              PromptDescendantChecker1:Disconnect()
+              PromptDescendantChecker1 = nil
+          end
+          for _, prompt in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if prompt:IsA("ProximityPrompt") then
+                  prompt.HoldDuration = prompt:GetAttribute("OriginalHoldDuration")
+                  prompt:RemoveAttribute("OriginalHoldDuration")
+              end
+          end
+      end
+  end,
+})
+
+FOVSection:Slider({
+  Flag = "FOVSlider",
+  Title = "FOV",
+  Step = 1,
+  Value = {
+    Min = 20,
+    Max = 120,
+    Default = 70,
+  },
+  Callback = function(value)
+      getgenv().FOV = value
+  end,
+})
+
+local FOVloop
+FOVSection:Toggle({
+  Flag = "FOVToggle",
+  Title = "Enable FOV",
+  Value = false,
+  Callback = function(value)
+      if value then
+          local RunService = game:GetService("RunService")
+          FOVloop = RunService.RenderStepped:Connect(function()
+              workspace.CurrentCamera.FieldOfView = getgenv().FOV
+          end)
+      else
+          if FOVloop then
+              FOVloop:Disconnect()
+              FOVloop = nil
+          end
+          workspace.CurrentCamera.FieldOfView = 70
+      end
+  end,
+})
+
+local EntityNames1 = {
+    ["RushMoving"] = "Rush",
+    ["Eyes"] = "Eyes",
+    ["SeekMovingNewClone"] = "Seek",
+    ["AmbushMoving"] = "Ambush",
+    ["Screech"] = "Screech",
+    ["A60"] = "A60",
+    ["A120"] = "A120",
+    ["BackdoorLookman"] = "Lookman",
+    ["BackdoorRush"] = "Blitz",
+}
+
+local EntityDescendantChecker1
+General:Toggle({
+  Flag = "EntityNotifToggle",
+  Title = "Entity Notifier",
+  Value = false,
+  Callback = function(value)
+      if value then
+          EntityDescendantChecker1 = game.Workspace.DescendantAdded:Connect(function(Entity)
+              if EntityNames1[Entity.Name] and Entity:IsA("Model") then
+                  WindUI:Notify({
+                    Title = "Entity Notifier",
+                    Duration = 2,
+                    Content = EntityNames1[Entity.Name] .. " has spawned",
+                  })
+                  notifsound()
+              end
+          end)
+      else
+          if EntityDescendantChecker1 then
+              EntityDescendantChecker1:Disconnect()
+              EntityDescendantChecker1 = nil
+          end
+      end
+  end,
+})
+
+local CharacterLoop
+local ThirdPLoop
+General:Toggle({
+  Flag = "ThirdPToggle",
+  Title = "Third-P",
+  Value = false,
+  Callback = function(value)
+      if value then
+          local RunService = game:GetService("RunService")
+          local Players = game:GetService("Players")
+          
+          local player = Players.LocalPlayer
+          local camera = workspace.CurrentCamera
+          local character = player.Character or player.CharacterAdded:Wait()
+          local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+          
+          local DISTANCE = 4  -- How far behind the character
+          local HEIGHT = 3    -- How high above the character
+          
+          ThirdPLoop = RunService.RenderStepped:Connect(function()
+              if humanoidRootPart and humanoidRootPart.Parent then
+                  -- Position camera behind character
+                  local cameraPos = humanoidRootPart.Position - humanoidRootPart.CFrame.LookVector * DISTANCE + Vector3.new(0, HEIGHT, 0) + humanoidRootPart.CFrame.RightVector * 1.5
+                  camera.CFrame = CFrame.new(cameraPos, humanoidRootPart.Position + Vector3.new(0, 2, 0))
+              end
+          end)
+          
+          -- Update character when respawning
+          CharacterLoop = player.CharacterAdded:Connect(function(newCharacter)
+              character = newCharacter
+              humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+          end)
+      else
+          if CharacterLoop then
+              CharacterLoop:Disconnect()
+              CharacterLoop = nil
+          end
+          if ThirdPLoop then
+              ThirdPLoop:Disconnect()
+              ThirdPLoop = nil
+          end
+          local Players = game:GetService("Players")
+
+          local player = Players.LocalPlayer
+          local character = player.Character or player.CharacterAdded:Wait()
+          local head = character:WaitForChild("Head")
+          local camera = workspace.CurrentCamera
+          
+          camera.Focus = head.CFrame
+          camera.CFrame = head.CFrame
+      end
+  end,
+})
+
+local LightCheck
+General:Toggle({
+  Flag = "FBToggle",
+  Title = "Fullbright",
+  Callback = function(value)
+      if value then
+          local Light = game:GetService("Lighting")
+    
+          function dofullbright()
+              Light.Ambient = Color3.new(1, 1, 1)
+              Light.ColorShift_Bottom = Color3.new(1, 1, 1)
+              Light.ColorShift_Top = Color3.new(1, 1, 1)
+          end
+          
+          dofullbright()
+          
+          LightCheck = Light.LightingChanged:Connect(dofullbright)
+      else
+          if LightCheck then
+              LightCheck:Disconnect()
+              LightCheck = nil
+          end
+      end
+  end,
+})
+
+General:Toggle({
+  Flag = "NoCollisionToggle",
+  Title = "No collision",
+  Callback = function(value)
+    getgenv().Noclip = value
+    if value then
+     task.spawn(function()
+      local player = game.Players.LocalPlayer
+      local character = player.Character or player.CharacterAdded:Wait()
+      while getgenv().Noclip do
+          for _, part in ipairs(character:GetDescendants()) do
+              if part:IsA("BasePart") then
+                  part.CanCollide = false
+              end
+          end
+       task.wait(0.1)
+      end
+          for _, part in ipairs(character:GetDescendants()) do
+              if part:IsA("BasePart") then
+                  part.CanCollide = true
+              end
+          end
+     end)
+    end
+   end
+})
+
+-- ESP --
+
+local EntityNames = {
+    ["RushMoving"] = "Rush",
+    ["Eyes"] = "Eyes",
+    ["SeekMovingNewClone"] = "Seek",
+    ["AmbushMoving"] = "Ambush",
+    ["FigureRig"] = "Figure",
+    ["GrumbleRig"] = "Grumble",
+    ["Screech"] = "Screech",
+    ["Snare"] = "Snare",
+    ["A60"] = "A60",
+    ["A120"] = "A120",
+    ["BackdoorLookman"] = "Lookman",
+    ["BackdoorRush"] = "Blitz",
+}
+
+local EntityDescendantChecker
+
+ESP:Toggle({
+  Flag = "EntityESPToggle",
+  Title = "Entity ESP",
+  Callback = function(value)
+      if value then
+          local function highlight(Entity)
+              if Entity:IsA("Model") then
+                  if Entity.Name == "FigureRig" or Entity.Name == "GrumbleRig" or Entity.Name == "Screech" or Entity.Name == "SeekMovingNewClone" or Entity.Name == "Snare" then
+                      local highlight = Instance.new("Highlight")
+                      highlight.FillTransparency = 0.7
+                      highlight.Parent = Entity
+                      highlight.Adornee = Entity
+    
+                      local billboard = Instance.new("BillboardGui")
+                      billboard.Enabled = true
+                      billboard.Size = UDim2.fromOffset(100, 25) -- or UDim2.fromScale(4, 1)
+                      billboard.AlwaysOnTop = true               -- optional but recommended
+                      billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+                      billboard.MaxDistance = 0 -- 0 = unlimited
+                      billboard.Parent = Entity
+    
+                      local TextLabel = Instance.new("TextLabel")
+                      TextLabel.Visible = true
+                      TextLabel.BackgroundTransparency = 1
+                      TextLabel.Size = UDim2.fromScale(1, 1)
+                      TextLabel.Text = EntityNames[Entity.Name]
+                      TextLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                      TextLabel.TextScaled = true
+                      TextLabel.Parent = billboard
+    
+                  else
+    
+                      local hHum = Instance.new("Humanoid")
+                      hHum.Parent = Entity
+
+                      repeat
+                          task.wait()
+                      until Entity:FindFirstChildOfClass("Part")
+    
+                      local hPart = Entity:FindFirstChildOfClass("Part")
+                      hPart.Transparency = 0.99
+    
+                      local highlight = Instance.new("Highlight")
+                      highlight.FillTransparency = 0.7
+                      highlight.Parent = Entity
+                      highlight.Adornee = Entity
+    
+                      local billboard = Instance.new("BillboardGui")
+                      billboard.Enabled = true
+                      billboard.Size = UDim2.fromOffset(100, 25) -- or UDim2.fromScale(4, 1)
+                      billboard.AlwaysOnTop = true               -- optional but recommended
+                      billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+                      billboard.MaxDistance = 0 -- 0 = unlimited
+                      billboard.Parent = Entity
+    
+                      local TextLabel = Instance.new("TextLabel")
+                      TextLabel.Visible = true
+                      TextLabel.BackgroundTransparency = 1
+                      TextLabel.Size = UDim2.fromScale(1, 1)
+                      TextLabel.Text = EntityNames[Entity.Name]
+                      TextLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                      TextLabel.TextScaled = true
+                      TextLabel.Parent = billboard
+                  end
+              end
+          end
+          for _, Entity in pairs(game.Workspace:GetDescendants()) do
+              if EntityNames[Entity.Name] then
+                  highlight(Entity)
+              end
+          end
+          EntityDescendantChecker = game.Workspace.DescendantAdded:Connect(function(Entity)
+              if EntityNames[Entity.Name] then
+                  highlight(Entity)
+              end
+          end)
+      else
+          EntityDescendantChecker:Disconnect()
+          EntityDescendantChecker = nil
+          for _, Entity in pairs(game.Workspace:GetDescendants()) do
+              if EntityNames[Entity.Name] then
+                  if Entity.Name == "FigureRig" or Entity.Name == "GrumbleRig" or Entity.Name == "Screech" or Entity.Name == "SeekMovingNewClone" or Entity.Name == "Snare" then
+                      if Entity:FindFirstChildOfClass("Highlight") then
+                        Entity:FindFirstChildOfClass("Highlight"):Destroy()
+                      end
+                      if Entity:FindFirstChildOfClass("BillboardGui") then
+                        Entity:FindFirstChildOfClass("BillboardGui"):Destroy()
+                      end
+                  else
+                      if Entity:FindFirstChildOfClass("Highlight") then
+                        Entity:FindFirstChildOfClass("Highlight"):Destroy()
+                      end
+                      if Entity:FindFirstChildOfClass("BillboardGui") then
+                        Entity:FindFirstChildOfClass("BillboardGui"):Destroy()
+                      end
+                      if Entity:FindFirstChildOfClass("Humanoid") then
+                          Entity:FindFirstChildOfClass("Humanoid"):Destroy()
+                      end
+                      local hPart = Entity:FindFirstChildOfClass("Part")
+                      hPart.Transparency = 1
+                  end
+              end
+          end
+      end
+  end,
+})
+
+local ObjectiveNames = {
+    ["KeyObtain"] = "Key",
+    ["LeverForGate"] = "Gate Lever",
+    ["LiveBreakerPolePickup"] = "Breaker",
+    ["LibraryHintPaper"] = "Library paper",
+    ["LiveHintBook"] = "Sus Book",
+    ["FuseObtain"] = "Fuse",
+    ["TimerLever"] = "Time Lever",
+}
+
+local ObjectiveDescendantChecker
+ESP:Toggle({
+  Flag = "ObjectiveESPToggle",
+  Title = "Objective ESP",
+  Callback = function(value)
+      if value then
+          local function highlight(Objective)
+              if not Objective:FindFirstChildOfClass("Highlight") and not Objective:FindFirstChildOfClass("BillboardGui") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                    highlight.FillTransparency = 0.7
+                    highlight.Parent = Objective
+                    highlight.Adornee = Objective
+  
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Enabled = true
+                    billboard.Size = UDim2.fromOffset(100, 25) -- or UDim2.fromScale(4, 1)
+                    billboard.AlwaysOnTop = true               -- optional but recommended
+                    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+                    billboard.MaxDistance = 0 -- 0 = unlimited
+                    billboard.Parent = Objective
+  
+                    local TextLabel = Instance.new("TextLabel")
+                    TextLabel.Visible = true
+                    TextLabel.BackgroundTransparency = 1
+                    TextLabel.Size = UDim2.fromScale(1, 1)
+                    TextLabel.Text = ObjectiveNames[Objective.Name]
+                    TextLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    TextLabel.TextScaled = true
+                    TextLabel.Parent = billboard
+              end
+          end
+          for _, Objective in ipairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if ObjectiveNames[Objective.Name] then
+                  highlight(Objective)
+              end
+          end
+          ObjectiveDescendantChecker = game.Workspace.CurrentRooms.DescendantAdded:Connect(function(Objective)
+              if ObjectiveNames[Objective.Name] then
+                  highlight(Objective)
+              end
+          end)
+      else
+          if ObjectiveDescendantChecker then
+              ObjectiveDescendantChecker:Disconnect()
+              ObjectiveDescendantChecker = nil
+          end
+          for _, Objective in ipairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if ObjectiveNames[Objective.Name] then
+                  local highlight = Objective:FindFirstChildOfClass("Highlight")
+                  local billboard = Objective:FindFirstChildOfClass("BillboardGui")
+
+                  if highlight then
+                      highlight:Destroy()
+                  end
+                  if billboard then
+                      billboard:Destroy()
+                  end
+              end
+          end
+      end
+  end,
+})
+
+local ItemNames = {
+    ["Candle"] = "Candle",
+    ["Crucifix"] = "Crucifix",
+    ["SkeletonKey"] = "SkeletonKey",
+    ["Flashlight"] = "Flashlight",
+    ["GoldPile"] = "Gold Pile",
+    ["Vitamins"] = "Vitamins",
+    ["Lockpick"] = "Lockpick",
+    ["Shakelight"] = "Shakelight",
+    ["CrucifixOnTheWall"] = "Crucifix",
+    ["Battery"] = "Battery",
+    ["ChestBox"] = "Chest",
+    ["ChestBoxLocked"] = "Chest[locked]",
+    ["Bandage"] = "Bandage",
+    ["Lighter"] = "Lighter",
+    ["Smoothie"] = "Smoothie",
+    ["AlarmClock"] = "Clock",
+    ["StardustPickup"] = "Stardust",
+}
+
+local ItemDescendantChecker
+
+ESP:Toggle({
+  Flag = "ItemESPToggle",
+  Title = "Item ESP",
+  Callback = function(value)
+      if value then
+          local function highlight(Item)
+              if Item:IsA("Model") then
+                  if not Item:FindFirstChildOfClass("Highlight") and not Item:FindFirstChildOfClass("BillboardGui") then
+                        local highlight = Instance.new("Highlight")
+                        highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                        highlight.FillTransparency = 0.7
+                        highlight.Parent = Item
+                        highlight.Adornee = Item
+      
+                        local billboard = Instance.new("BillboardGui")
+                        billboard.Enabled = true
+                        billboard.Size = UDim2.fromOffset(100, 25) -- or UDim2.fromScale(4, 1)
+                        billboard.AlwaysOnTop = true               -- optional but recommended
+                        billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+                        billboard.MaxDistance = 0 -- 0 = unlimited
+                        billboard.Parent = Item
+      
+                        local TextLabel = Instance.new("TextLabel")
+                        TextLabel.Visible = true
+                        TextLabel.BackgroundTransparency = 1
+                        TextLabel.Size = UDim2.fromScale(1, 1)
+                        TextLabel.Text = ItemNames[Item.Name]
+                        TextLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                        TextLabel.TextScaled = true
+                        TextLabel.Parent = billboard
+                  end
+              end
+          end
+          for _, Item in ipairs(game.Workspace:GetDescendants()) do
+              if ItemNames[Item.Name] then
+                  highlight(Item)
+              end
+          end
+          ItemDescendantChecker = game.Workspace.DescendantAdded:Connect(function(Item)
+              if ItemNames[Item.Name] then
+                  highlight(Item)
+              end
+          end)
+      else
+          if ItemDescendantChecker then
+              ItemDescendantChecker:Disconnect()
+              ItemDescendantChecker = nil
+          end
+          for _, Item in ipairs(game.Workspace:GetDescendants()) do
+              if ItemNames[Item.Name] then
+                  local highlight = Item:FindFirstChildOfClass("Highlight")
+                  local billboard = Item:FindFirstChildOfClass("BillboardGui")
+
+                  if highlight then
+                      highlight:Destroy()
+                  end
+                  if billboard then
+                      billboard:Destroy()
+                  end
+              end
+          end
+      end
+  end,
+})
+
+local DoorDescendantChecker
+
+ESP:Toggle({
+  Flag = "DoorESPToggle",
+  Title = "Door ESP",
+  Callback = function(value)
+      if value then
+          local function highlight(Door)
+              if not Door.Parent:FindFirstChild("hPart") and not Door.Parent:FindFirstChildOfClass("Humanoid") then
+                    local hHum = Instance.new("Humanoid")
+                    hHum.Parent = Door.Parent
+
+                    local hPart = Instance.new("Part")
+                    hPart.Size = Door.Size
+                    hPart.CFrame = Door.CFrame
+                    hPart.Transparency = 0.99
+                    hPart.CanCollide = false
+                    hPart.Name = "hPart"
+                    hPart.Parent = Door.Parent
+
+                    local weld = Instance.new("Weld")
+                    weld.Part0 = Door
+                    weld.Part1 = hPart
+                    weld.C0 = CFrame.new(0, 0, 0)
+                    weld.Parent = hPart
+
+                    local highlight = Instance.new("Highlight")
+                    highlight.FillColor = Color3.fromRGB(0, 255, 255)
+                    highlight.FillTransparency = 0.7
+                    highlight.Parent = hPart
+                    highlight.Adornee = hPart
+  
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Enabled = true
+                    billboard.Size = UDim2.fromOffset(100, 25) -- or UDim2.fromScale(4, 1)
+                    billboard.AlwaysOnTop = true               -- optional but recommended
+                    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+                    billboard.MaxDistance = 0 -- 0 = unlimited
+                    billboard.Parent = hPart
+  
+                    local ID = Door.Parent:GetAttribute("RoomID")
+                    local Name = Door.Parent.Parent:GetAttribute("RawName")
+                    local TextLabel = Instance.new("TextLabel")
+                    TextLabel.Visible = true
+                    TextLabel.BackgroundTransparency = 1
+                    TextLabel.Size = UDim2.fromScale(1, 1)
+                    TextLabel.Text = Door.Parent.Name .. "[" .. ID .. "]" .. "\n" .. "(" .. Name .. ")"
+                    TextLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
+                    TextLabel.TextScaled = true
+                    TextLabel.Parent = billboard
+              end
+          end
+          for _, Door in ipairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if Door.Name == "Door" and Door.Parent.Name == "Door" then
+                      print("Door dound")
+                      highlight(Door)
+              end
+          end
+          DoorDescendantChecker = game.Workspace.CurrentRooms.DescendantAdded:Connect(function(Door)
+              if Door.Name == "Door" and Door.Parent.Name == "Door" then
+                      print("Door dound")
+                      highlight(Door)
+              end
+          end)
+      else
+          if DoorDescendantChecker then
+              DoorDescendantChecker:Disconnect()
+              DoorDescendantChecker = nil
+          end
+          for _, Door in ipairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if Door.Name == "Door" and Door.Parent.Name == "Door" then
+                  local hum = Door.Parent:FindFirstChildOfClass("Humanoid")
+                  local hPart = Door.Parent:FindFirstChild("hPart")
+
+                  if hum then
+                      hum:Destroy()
+                  end
+                  if hPart then
+                      hPart:Destroy()
+                  end
+              end
+          end
+      end
+  end,
+})
+
+local HideSpotNames = {
+    ["Rooms_Locker"] = "Locker",
+    ["Wardrobe"] = "Wardrobe",
+    ["Toolshed"] = "Toolshed",
+    ["Bed"] = "Bed",
+    ["Double_Bed"] = "Bed",
+}
+
+local HideSpotDescendantChecker
+
+ESP:Toggle({
+  Title = "Hiding spot ESP",
+  Callback = function(value)
+      if value then
+          local function highlight(HideSpot)
+              if not HideSpot:FindFirstChildOfClass("Highlight") and not HideSpot:FindFirstChildOfClass("BillboardGui") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.FillColor = Color3.fromRGB(128, 0, 128)
+                    highlight.FillTransparency = 0.7
+                    highlight.Parent = HideSpot
+                    highlight.Adornee = HideSpot
+  
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Enabled = true
+                    billboard.Size = UDim2.fromOffset(100, 25) -- or UDim2.fromScale(4, 1)
+                    billboard.AlwaysOnTop = true               -- optional but recommended
+                    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+                    billboard.MaxDistance = 0 -- 0 = unlimited
+                    billboard.Parent = HideSpot
+  
+                    local TextLabel = Instance.new("TextLabel")
+                    TextLabel.Visible = true
+                    TextLabel.BackgroundTransparency = 1
+                    TextLabel.Size = UDim2.fromScale(1, 1)
+                    TextLabel.Text = HideSpotNames[HideSpot.Name]
+                    TextLabel.TextColor3 = Color3.fromRGB(128, 0, 128)
+                    TextLabel.TextScaled = true
+                    TextLabel.Parent = billboard
+              end
+          end
+          for _, HideSpot in ipairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if HideSpotNames[HideSpot.Name] then
+                  highlight(HideSpot)
+              end
+          end
+          HideSpotDescendantChecker = game.Workspace.CurrentRooms.DescendantAdded:Connect(function(HideSpot)
+              if HideSpotNames[HideSpot.Name] then
+                  highlight(HideSpot)
+              end
+          end)
+      else
+          if HideSpotDescendantChecker then
+              HideSpotDescendantChecker:Disconnect()
+              HideSpotDescendantChecker = nil
+          end
+          for _, HideSpot in ipairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if HideSpotNames[HideSpot.Name] then
+                  local highlight = HideSpot:FindFirstChildOfClass("Highlight")
+                  local billboard = HideSpot:FindFirstChildOfClass("BillboardGui")
+
+                  if highlight then
+                      highlight:Destroy()
+                  end
+                  if billboard then
+                      billboard:Destroy()
+                  end
+              end
+          end
+      end
+  end,
+})
+
+local EntityNames2 = {
+    ["RushMoving"] = "Rush",
+    ["AmbushMoving"] = "Ambush",
+    ["BackdoorRush"] = "Blitz",
+}
+
+local activeEntity = {}
+local EntityRemovedChecker
+local EntityDescendantChecker2
+local oghipheight = game:GetService("Players").LocalPlayer.Character:FindFirstChild("Humanoid").HipHeight
+local HitboxLoop
+BypassesSection:Toggle({
+Flag = "HitboxSpoofToggle",
+Title = "Hitbox spoof",
+Desc = "Makes your hitbox small (protects you from entities like rush, ambush etc) requires no collision",
+Value = false,
+Callback = function(value)
+    local Chr = game:GetService("Players").LocalPlayer.Character
+    if value then
+        if getgenv().Noclip then
+                local function spoof()
+                    if Chr:FindFirstChild("Humanoid") then
+                            if Chr.Humanoid.HipHeight == 0.000005 then
+                                print("unnecessary print")
+                            else
+                                Chr.Humanoid.HipHeight = 0.000005
+                                WindUI:Notify({
+                                  Title = "Hitbox spoof",
+                                  Content = "spoof activated",
+                                  Duration = 1.5,
+                                })
+                                notifsound()
+                            end
+                    end
+                end
+
+                for _, Entity in pairs(game.Workspace:GetDescendants()) do
+                    if EntityNames2[Entity.Name] then
+                        activeEntity[Entity] = true
+                        spoof()
+                    end
+                end
+                EntityDescendantChecker2 = game.Workspace.DescendantAdded:Connect(function(Entity)
+                    if EntityNames2[Entity.Name] then
+                        activeEntity[Entity] = true
+                        spoof()
+                    end
+                end)
+                EntityRemovedChecker = game.Workspace.DescendantRemoving:Connect(function(Entity)
+                    if EntityNames2[Entity.Name] then
+                        if activeEntity[Entity] then
+                            activeEntity[Entity] = nil
+                            local check = true
+                            for _, v in pairs(activeEntity) do
+                                check = false
+                                break
+                            end
+                            if check then
+                                if Chr:FindFirstChild("Humanoid") then
+                                    Chr.Humanoid.HipHeight = oghipheight -- 2.382354497909546
+                                end
+                                WindUI:Notify({
+                                  Title = "Hitbox spoof",
+                                  Content = "spoof deactivated",
+                                  Duration = 1.5,
+                                })
+                                notifsound()
+                            end
+                        end
+                    end
+                end)
+        else
+                WindUI:Notify({
+                    Title = "Hitbox spoof",
+                    Content = "Please enable no collision before enabling hitbox spoof",
+                    Duration = 1.5,
+                })
+                notifsound()
+        end
+    else      
+        if EntityDescendantChecker2 then
+            EntityDescendantChecker2:Disconnect()
+            EntityDescendantChecker2 = nil
+        end
+        if EntityRemovedChecker then
+            EntityRemovedChecker:Disconnect()
+            EntityRemovedChecker = nil
+        end
+
+        activeEntity = {}
+
+        if Chr:FindFirstChild("Humanoid") then
+            Chr.Humanoid.HipHeight = oghipheight -- 2.382354497909546
+        end
+    end
+end,
+})
+
+local ObstructionDescendantChecker
+BypassesSection:Toggle({
+  Flag = "BypassSeekObstructionToggle",
+  Title = "Bypass Seek Obstructions",
+  Value = false,
+  Callback = function(value)
+      if value then
+          for _, Obstruction in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if Obstruction.Name == "HurtPart" and Obstruction.Parent.Name == "ChandelierObstruction" then
+                  Obstruction.Parent:Destroy()
+              end
+          end
+          ObstructionDescendantChecker = game.Workspace.CurrentRooms.DescendantAdded:Connect(function(Obstruction)
+              if Obstruction.Name == "HurtPart" and Obstruction.Parent.Name == "ChandelierObstruction" or Obstruction.Name == "Collision" and Obstruction.Parent.Name == "Seek_Arm" then
+                  Obstruction.Parent:Destroy()
+              end
+          end)
+      else
+          if ObstructionDescendantChecker then
+              ObstructionDescendantChecker:Disconnect()
+              ObstructionDescendantChecker = nil
+          end
+      end
+  end,
+})
+
+local BypassEyesLoop
+BypassesSection:Toggle({
+  Flag = "BypassEyesToggle",
+  Title = "Bypass Eyes",
+  Value = false,
+  Callback = function(value)
+      if value then
+          local RunService = game:GetService("RunService")
+          BypassEyesLoop = RunService.RenderStepped:Connect(function()
+              game.ReplicatedStorage.RemotesFolder.MotorReplication:FireServer(-650)
+          end)
+      else
+          if BypassEyesLoop then
+              BypassEyesLoop:Disconnect()
+              BypassEyesLoop = nil
+          end
+      end
+  end,
+})
+
+BypassesSection:Toggle({
+  Flag = "NoCutscenesToggle",
+  Title = "No Cutscenes",
+  Value = false,
+  Callback = function(value)
+      local Players = game:GetService("Players")
+      local LocalPlayer = Players.LocalPlayer
+      
+      if not LocalPlayer or not LocalPlayer.PlayerGui then return end
+      
+      local MainUI = LocalPlayer.PlayerGui:FindFirstChild("MainUI")
+      if not MainUI then return end
+      
+      local Initiator = MainUI:FindFirstChild("Initiator")
+      if not Initiator then return end
+      
+      local Main_Game = Initiator:FindFirstChild("Main_Game")
+      if not Main_Game then return end
+      
+      local RemoteListener = Main_Game:FindFirstChild("RemoteListener")
+      if not RemoteListener then return end
+      
+      local Cutscenes = RemoteListener:FindFirstChild("Cutscenes")
+      if not Cutscenes then return end
+      
+      if value then
+          Cutscenes.Parent = game:GetService("Workspace")
+          getgenv().CutscenesParent = RemoteListener
+          getgenv().Cutscenes = Cutscenes
+      else
+          local Cutscenes = game.Workspace.Cutscenes
+          Cutscenes.Parent = game.Players.LocalPlayer.PlayerGui.MainUI.Initiator.Main_Game.RemoteListener
+      end
+  end,
+})
+
+local SnareDescendantChecker
+BypassesSection:Toggle({
+  Flag = "BypassSnareToggle",
+  Title = "Bypass Snare",
+  Value = false,
+  Callback = function(value)
+      if value then
+          for _, Snare in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if Snare.Name == "Snare" and Snare.Parent.Name == "Snare" then
+                  local Hitbox = Snare.Parent:WaitForChild("Hitbox", 0.3)
+                  if Hitbox then
+                      Hitbox.CFrame = Hitbox.CFrame + Vector3.new(0, 500, 0)
+                  end
+              end
+          end
+          SnareDescendantChecker = game.Workspace.CurrentRooms.DescendantAdded:Connect(function(Snare)
+              if Snare.Name == "Snare" and Snare.Parent.Name == "Snare" then
+                  local Hitbox = Snare.Parent:WaitForChild("Hitbox", 0.3)
+                  if Hitbox then
+                      Hitbox.CFrame = Hitbox.CFrame + Vector3.new(0, 500, 0)
+                  end
+              end
+          end)
+      else
+          if SnareDescendantChecker then
+              SnareDescendantChecker:Disconnect()
+              SnareDescendantChecker = nil
+          end
+          for _, Snare in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
+              if Snare.Name == "Snare" and Snare.Parent.Name == "Snare" then
+                  local Hitbox = Snare.Parent:WaitForChild("Hitbox", 0.3)
+                  if Hitbox then
+                      Hitbox.CFrame = Hitbox.CFrame + Vector3.new(0, -500, 0)
+                  end
+              end
+          end
+      end
+  end,
+})
+
+WindUI:Notify({
+  Title = "Notifier",
+  Duration = 10,
+  Content = ":3",
+})
+notifsound()
+
+WindUI:Notify({
+  Title = "Notifier",
+  Duration = 10,
+  Content = "if you respawn after dying you will need to reactivate some features.",
+})
+notifsound()
